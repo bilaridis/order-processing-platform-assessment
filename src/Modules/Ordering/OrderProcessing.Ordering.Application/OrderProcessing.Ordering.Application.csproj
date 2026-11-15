@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderProcessing.BuildingBlocks.Application\OrderProcessing.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\Ordering\OrderProcessing.Ordering.Domain\OrderProcessing.Ordering.Domain.csproj" />
+    <ProjectReference Include="..\..\Ordering\OrderProcessing.Ordering.Contracts\OrderProcessing.Ordering.Contracts.csproj" />
+    <ProjectReference Include="..\..\Inventory\OrderProcessing.Inventory.Contracts\OrderProcessing.Inventory.Contracts.csproj" />
+    <ProjectReference Include="..\..\Pricing\OrderProcessing.Pricing.Contracts\OrderProcessing.Pricing.Contracts.csproj" />
+    <ProjectReference Include="..\..\Ecommerce\OrderProcessing.Ecommerce.Contracts\OrderProcessing.Ecommerce.Contracts.csproj" />
+    <ProjectReference Include="..\..\Carriers\OrderProcessing.Carriers.Contracts\OrderProcessing.Carriers.Contracts.csproj" />
+    <InternalsVisibleTo Include="OrderProcessing.Ordering.Infrastructure" />
+    <InternalsVisibleTo Include="OrderProcessing.Ordering.Module" />
+    <InternalsVisibleTo Include="OrderProcessing.Ordering.Functions" />
+    <InternalsVisibleTo Include="OrderProcessing.Modules.UnitTests" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+</Project>

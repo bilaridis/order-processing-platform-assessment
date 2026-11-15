@@ -1,0 +1,40 @@
+# Static analysis of the Terraform (ADR-0011). A finding fails the build. Each check below is skipped
+# on purpose, with the decision behind it. Removing a line is how a decision is reversed.
+framework:
+  - terraform
+compact: true
+skip-check:
+  # --- The launch position: public endpoints locked down with Entra authentication, no private
+  # --- endpoints yet (05, "The cost of going private"; cost forecast steps 2 to 4).
+  - CKV_AZURE_59   # Storage public network access: the runtime accounts are reached by the apps over public endpoints, identity only.
+  - CKV2_AZURE_33  # Storage private endpoint: step 2.
+  - CKV_AZURE_113  # SQL public network access: step 2. Entra authentication only, no SQL logins.
+  - CKV2_AZURE_45  # SQL private endpoint: step 2.
+  - CKV2_AZURE_34  # SQL "Allow Azure services" rule: the launch way in for the apps; replaced by the private endpoint in step 2.
+  - CKV_AZURE_189  # Key Vault public network access: step 2. RBAC only.
+  - CKV2_AZURE_32  # Key Vault private endpoint: step 2.
+  - CKV_AZURE_109  # Key Vault firewall: the apps have no fixed outbound address on a shared plan; step 2 replaces it.
+  - CKV_AZURE_204  # Service Bus public network access: a private endpoint needs Premium, about +€600 a month (step 3).
+  - CKV_AZURE_221  # Function app public network access: inbound is denied by access restriction, but the release
+                   # pipeline deploys through the app's SCM endpoint, which this setting would close too (step 4).
+
+  # --- Customer-managed keys: platform-managed keys are the decision until a requirement says otherwise.
+  - CKV2_AZURE_1   # Storage CMK.
+  - CKV_AZURE_201  # Service Bus CMK (Premium only).
+  - CKV_AZURE_199  # Service Bus double encryption (Premium only).
+
+  # --- Runtime storage of the Functions host: leases and checkpoints, no business data.
+  - CKV_AZURE_206  # Replication: LRS is enough for state the host rebuilds.
+  - CKV_AZURE_33   # Queue logging: the host's internal queues.
+  - CKV_AZURE_43   # Naming rules: the name is computed (lower case, 24 characters); the check cannot evaluate it.
+
+  # --- Sizing decided in the cost forecast.
+  - CKV_AZURE_211  # Plan suitable for production: test runs on one B2 plan (about €125 a month for all of test).
+  - CKV_AZURE_212  # Minimum instances for failover: test has one instance; production has two.
+  - CKV_AZURE_225  # Zone-redundant plan: on in production, off in test.
+  - CKV_AZURE_229  # Zone-redundant database: S2 (Standard) has no zone redundancy; General Purpose at growth does.
+
+  # --- SQL features with their own decision.
+  - CKV2_AZURE_2   # Vulnerability assessment: comes with Microsoft Defender for SQL, a cost decision for the analysis phase.
+  - CKV_AZURE_224  # Ledger: no requirement for cryptographic proof of the order history; the event log is the audit trail.
+  - CKV_AZURE_24   # Audit retention over 90 days: audit goes to Log Analytics, whose retention is set per environment.

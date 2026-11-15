@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <!-- The only building block that knows Azure. Referenced by the Functions hosts, never by a module. -->
+    <ProjectReference Include="..\OrderProcessing.BuildingBlocks.Infrastructure\OrderProcessing.BuildingBlocks.Infrastructure.csproj" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
+    <PackageReference Include="Azure.Identity" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <!-- Referencing the host brings every assembly of the platform into the test output folder. -->
+    <ProjectReference Include="..\..\src\Host\OrderProcessing.Host\OrderProcessing.Host.csproj" />
+  </ItemGroup>
+</Project>

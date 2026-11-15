@@ -1,0 +1,194 @@
+name: Terraform
+
+# Terraform provisions; the release pipelines deploy code (ADR-0011).
+# Pull request: format, validate, unit tests with a mocked provider, security scan, and the plan for test.
+# Main: apply to test. Production: started by hand, plan reviewed and approved, then exactly that plan applied.
+#
+# The Azure steps run only when the repository variables AZURE_CLIENT_ID, AZURE_TENANT_ID and
+# AZURE_SUBSCRIPTION_ID are set (OIDC federation, no stored secret). Until then the checks still run.
+
+on:
+  pull_request:
+    paths: ["deploy/terraform/**", ".github/workflows/terraform.yml"]
+  push:
+    branches: [main]
+    paths: ["deploy/terraform/**", ".github/workflows/terraform.yml"]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to apply
+        type: choice
+        options: [production]
+
+permissions:
+  contents: read
+  id-token: write # OIDC to Azure.
+  pull-requests: write # The plan is posted on the pull request.
+
+concurrency:
+  group: terraform-${{ github.ref }}-${{ inputs.environment || 'test' }}
+  cancel-in-progress: false # Never cancel an apply half way.
+
+env:
+  TF_IN_AUTOMATION: "true"
+  ARM_USE_OIDC: "true"
+  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy/terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Format
+        run: terraform fmt -check -recursive
+
+      - name: Validate the environments
+        run: |
+          for environment in environments/*/; do
+            terraform -chdir="$environment" init -backend=false -input=false
+            terraform -chdir="$environment" validate
+          done
+
+      # Plan-only tests against a mocked provider: the ADR-0010 and ADR-0003 rules of the modules.
+      - name: Module tests
+        run: |
+          terraform -chdir=modules/ordering-service init -backend=false -input=false
+          terraform -chdir=modules/ordering-service test
+
+      # Misconfiguration in what we declare. Not a penetration test (ADR-0011).
+      - name: Security scan
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: deploy/terraform
+          framework: terraform
+          config_file: deploy/terraform/.checkov.yaml
+
+  plan-test:
+    if: github.event_name == 'pull_request' && vars.AZURE_CLIENT_ID != ''
+    needs: checks
+    runs-on: ubuntu-latest
+    environment: test-plan
+    defaults:
+      run:
+        working-directory: deploy/terraform/environments/test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Variables
+        env:
+          TFVARS: ${{ secrets.TFVARS_TEST }}
+        run: printf '%s\n' "$TFVARS" > test.tfvars
+      - run: terraform init -input=false
+      - name: Plan
+        id: plan
+        run: terraform plan -input=false -no-color -var-file=test.tfvars -out=tfplan | tee plan.txt
+      # The reviewer sees exactly what will be added, changed or destroyed before approving.
+      - name: Post the plan on the pull request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('deploy/terraform/environments/test/plan.txt', 'utf8');
+            const body = '### Terraform plan, test\n\n```\n' + plan.slice(-60000) + '\n```';
+            await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
+
+  apply-test:
+    if: github.event_name == 'push' && vars.AZURE_CLIENT_ID != ''
+    needs: checks
+    runs-on: ubuntu-latest
+    environment: test
+    defaults:
+      run:
+        working-directory: deploy/terraform/environments/test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - uses: azure/login@v2 # The az CLI is used by the module that removes the "$Default" subscription rule.
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Variables
+        env:
+          TFVARS: ${{ secrets.TFVARS_TEST }}
+        run: printf '%s\n' "$TFVARS" > test.tfvars
+      - run: terraform init -input=false
+      - run: terraform apply -input=false -auto-approve -var-file=test.tfvars
+
+  plan-production:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: checks
+    runs-on: ubuntu-latest
+    environment: production-plan
+    defaults:
+      run:
+        working-directory: deploy/terraform/environments/production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Variables
+        env:
+          TFVARS: ${{ secrets.TFVARS_PRODUCTION }}
+        run: printf '%s\n' "$TFVARS" > production.tfvars
+      - run: terraform init -input=false
+      - name: Plan
+        run: |
+          terraform plan -input=false -no-color -var-file=production.tfvars -out=tfplan | tee plan.txt
+          cat plan.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-plan
+          path: deploy/terraform/environments/production/tfplan
+          retention-days: 3
+
+  # The approver of the "production" environment reads the plan in the previous job's summary.
+  # This job applies that saved plan, not a new one, so nothing unreviewed reaches production.
+  apply-production:
+    needs: plan-production
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: deploy/terraform/environments/production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: production-plan
+          path: deploy/terraform/environments/production
+      - run: terraform init -input=false
+      - run: terraform apply -input=false tfplan

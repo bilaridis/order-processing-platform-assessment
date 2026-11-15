@@ -1,0 +1,202 @@
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+type Address {
+  recipient: String!
+  line1: String!
+  line2: String
+  city: String!
+  postalCode: String!
+  country: String!
+}
+
+type CancelOrderPayload {
+  orderId: UUID!
+  accepted: Boolean!
+}
+
+type DeliveryOffer {
+  carrier: String!
+  service: String!
+  type: DeliveryType!
+  pointId: String
+  pointName: String
+  price: Decimal!
+  currency: String!
+  estimatedDelivery: LocalDate!
+  expiresAt: DateTime!
+  token: String!
+}
+
+type DeliveryOffersView {
+  requestId: UUID!
+  customerId: String!
+  status: String!
+  offers: [DeliveryOffer!]!
+  requestedAt: DateTime!
+}
+
+type Mutation {
+  "Send an order. It is received with status Submitted; price and stock are checked afterwards."
+  placeOrder(input: PlaceOrderInput!): PlaceOrderPayload! @cost(weight: "10")
+  "Ask every enabled carrier what it offers for this basket and destination. The answer is read with the deliveryOffers query; the platform lists the offers and does not choose one."
+  requestDeliveryOffers(input: DeliveryOffersInput!): RequestDeliveryOffersPayload! @cost(weight: "10")
+  "Ask to cancel one of your orders. Whether it can be cancelled is decided by Ordering and shows in the order's timeline."
+  cancelOrder(orderId: UUID! reason: String): CancelOrderPayload! @cost(weight: "10")
+}
+
+type Order {
+  orderId: UUID!
+  customerId: String!
+  status: String!
+  version: Long!
+  updatedAt: DateTime!
+  submittedAt: DateTime!
+  items: [OrderItem!]!
+  destination: Address!
+  summary: OrderSummary
+  payment: String!
+  carrier: String
+  trackingNumber: String
+  carrierStatus: String
+  tracking: [TrackingEntry!]!
+}
+
+type OrderItem {
+  sku: String!
+  quantity: Int!
+}
+
+type OrderListItem {
+  orderId: UUID!
+  status: String!
+  carrierStatus: String
+  submittedAt: DateTime!
+  total: Decimal
+  currency: String
+  items: Int!
+}
+
+type OrderSummary {
+  lines: [OrderSummaryLine!]!
+  subtotal: Decimal!
+  charges: [OrderSummaryCharge!]!
+  total: Decimal!
+  currency: String!
+  destination: Address!
+  placedAt: DateTime!
+}
+
+type OrderSummaryCharge {
+  code: String!
+  kind: String!
+  description: String!
+  amount: Decimal!
+}
+
+type OrderSummaryLine {
+  sku: String!
+  name: String!
+  quantity: Int!
+  unitPrice: Decimal!
+  lineTotal: Decimal!
+}
+
+type PlaceOrderPayload {
+  order: Order
+  error: UserError
+}
+
+type Query {
+  "One of your orders, with its status, payment, carrier detail and timeline. Null if it is not yours."
+  order(id: UUID!): Order @cost(weight: "10")
+  "Your orders, newest first."
+  myOrders(take: Int! = 20): [OrderListItem!]! @cost(weight: "10")
+  "The delivery offers you asked for with requestDeliveryOffers. Status Requested until the carriers have answered, then Ready. Null if the request is not yours."
+  deliveryOffers(requestId: UUID!): DeliveryOffersView @cost(weight: "10")
+}
+
+type RequestDeliveryOffersPayload {
+  deliveryOffers: DeliveryOffersView
+  error: UserError
+}
+
+type TrackingEntry {
+  id: UUID!
+  occurredAt: DateTime!
+  source: String!
+  code: String!
+  detail: String
+}
+
+type UserError {
+  code: String!
+  message: String!
+}
+
+input AddressInput {
+  recipient: String!
+  line1: String!
+  line2: String
+  city: String!
+  postalCode: String!
+  country: String!
+}
+
+input CustomerContactInput {
+  email: String
+  mobile: String
+  language: String! = "el"
+}
+
+input DeliveryOffersInput {
+  destinationCountry: String!
+  postalCode: String!
+  items: [OrderItemInput!]!
+}
+
+input OrderItemInput {
+  sku: String!
+  quantity: Int!
+}
+
+input PlaceOrderInput {
+  currency: String!
+  items: [OrderItemInput!]!
+  shippingAddress: AddressInput!
+  "How the customer will pay, for example card or wallet. Never card data: the card is entered on the provider's page."
+  paymentMethod: String!
+  deliveryOfferToken: String
+  contact: CustomerContactInput
+  idempotencyKey: String
+  "Optional. A token from the payment provider or a wallet for a method that is already authenticated or saved. It holds no card number."
+  paymentMethodToken: String
+}
+
+enum DeliveryType {
+  HOME
+  LOCKER
+  PICKUP_POINT
+}
+
+"The purpose of the `cost` directive is to define a `weight` for GraphQL types, fields, and arguments. Static analysis can use these weights when calculating the overall cost of a query or response."
+directive @cost("The `weight` argument defines what value to add to the overall cost for every appearance, or possible appearance, of a type, field, argument, etc." weight: String!) on SCALAR | OBJECT | FIELD_DEFINITION | ARGUMENT_DEFINITION | ENUM | INPUT_FIELD_DEFINITION
+
+"The `@specifiedBy` directive is used within the type system definition language to provide a URL for specifying the behavior of custom scalar definitions."
+directive @specifiedBy("The specifiedBy URL points to a human-readable specification. This field will only read a result for scalar types." url: String!) on SCALAR
+
+"The `DateTime` scalar represents an ISO-8601 compliant date time type."
+scalar DateTime @specifiedBy(url: "https:\/\/www.graphql-scalars.com\/date-time")
+
+"The `Decimal` scalar type represents a decimal floating-point number."
+scalar Decimal
+
+"The `LocalDate` scalar type represents a ISO date string, represented as UTF-8 character sequences YYYY-MM-DD. The scalar follows the specification defined in RFC3339"
+scalar LocalDate
+
+"The `Long` scalar type represents non-fractional signed whole 64-bit numeric values. Long can represent values between -(2^63) and 2^63 - 1."
+scalar Long
+
+scalar UUID @specifiedBy(url: "https:\/\/tools.ietf.org\/html\/rfc4122")

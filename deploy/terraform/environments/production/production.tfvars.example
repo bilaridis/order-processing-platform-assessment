@@ -1,0 +1,7 @@
+# Copy to production.tfvars in the pipeline's secure variables; the real values are not committed.
+cost_centre    = "orders"
+support_emails = ["l1-support@example.com"]
+sql_admin_group = {
+  name      = "sg-orders-production-sql-admins"
+  object_id = "00000000-0000-0000-0000-000000000000"
+}

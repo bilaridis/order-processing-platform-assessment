@@ -1,0 +1,104 @@
+openapi: 3.1.0
+info:
+  title: Order Processing Platform, HTTP endpoints
+  version: 1.0.0
+  description: |
+    The HTTP endpoints of the platform that are **not** the client API for orders.
+
+    Orders are placed, read and cancelled through **GraphQL** (ADR-0015): see
+    [customer.graphql](customer.graphql) for the web shop and the mobile app and
+    [backoffice.graphql](backoffice.graphql) for the back office. This file covers what stays plain
+    HTTP: the webhooks that providers call and the health endpoints. Delivery offers are asked
+    and read through the customer API too.
+
+    **Errors** are RFC 9457 problem details. Branch on the stable `code` field.
+servers:
+  - url: http://localhost:5080
+    description: Local development
+security:
+  - oauth2: []
+tags:
+  - name: Webhooks
+    description: Called by external providers, not by clients.
+paths:
+  /webhooks/carriers:
+    post:
+      tags: [Webhooks]
+      operationId: carriersWebhook
+      summary: Shipment status update from the carrier
+      description: |
+        Skeleton version of the carrier callback, authenticated with a shared secret. The production
+        version verifies the provider's HMAC signature instead (ADR-0007).
+      security:
+        - webhookSecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderId, status]
+              properties:
+                orderId: { type: string, format: uuid }
+                status:
+                  type: string
+                  enum: [dispatched, delivered, in_transit, out_for_delivery, ready_for_collection]
+                  description: |
+                    `dispatched` and `delivered` move the order. The others are carrier detail for
+                    the tracking view only.
+                location: { type: string, description: Where the parcel is, for tracking updates. }
+                carrier: { type: string, description: Required when status is `dispatched`. }
+                trackingNumber: { type: string, description: Required when status is `dispatched`. }
+      responses:
+        '202': { description: Accepted for processing. }
+        '400':
+          description: Unsupported or incomplete update.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401': { description: Missing or wrong secret. }
+  /health/live:
+    get:
+      tags: [Operations]
+      summary: Liveness probe
+      security: []
+      responses:
+        '200': { description: The process is running. }
+  /health/ready:
+    get:
+      tags: [Operations]
+      summary: Readiness probe
+      security: []
+      responses:
+        '200': { description: Ready to receive traffic. }
+        '503': { description: A dependency is not reachable. }
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      description: JWT access token from the identity provider. The token URLs below are placeholders.
+      flows:
+        authorizationCode:
+          authorizationUrl: https://identity.example.com/authorize
+          tokenUrl: https://identity.example.com/token
+          scopes:
+            orders.read: Read your own orders
+            orders.write: Place and cancel your own orders
+            orders.manage: Back office only (back-office API, staff token). Read and cancel any order
+    webhookSecret:
+      type: apiKey
+      in: header
+      name: X-Webhook-Secret
+  responses:
+    Unauthorized:
+      description: Missing or invalid access token.
+  schemas:
+    Problem:
+      type: object
+      description: RFC 9457 problem details.
+      properties:
+        type: { type: string }
+        title: { type: string, description: Human-readable message. }
+        status: { type: integer }
+        code: { type: string, description: Stable machine-readable error code. }
+        traceId: { type: string, description: Quote this when contacting support. }

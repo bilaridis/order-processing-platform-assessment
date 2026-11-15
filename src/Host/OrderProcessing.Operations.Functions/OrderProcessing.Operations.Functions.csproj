@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AzureFunctionsVersion>v4</AzureFunctionsVersion>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Knows no service: it works on Service Bus entities, not on orders. -->
+    <ProjectReference Include="..\..\BuildingBlocks\OrderProcessing.BuildingBlocks.Azure\OrderProcessing.BuildingBlocks.Azure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="host.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

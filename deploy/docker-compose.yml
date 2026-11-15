@@ -1,0 +1,37 @@
+# Local development dependencies. The application itself is started with `dotnet run` (see the root README),
+# so that it can be debugged and can use `dotnet user-jwts` tokens.
+#
+#   docker compose -f deploy/docker-compose.yml up -d
+services:
+  # Standalone .NET Aspire dashboard: a local viewer for traces, metrics and logs sent over OTLP.
+  # UI on http://localhost:18888. Point the host at it with OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+  telemetry:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:latest
+    environment:
+      DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports:
+      - "18888:18888"
+      - "4317:18889"
+
+  # Local stand-ins for the Azure data services (ADR-0004). Not used by the skeleton yet: persistence is
+  # still in-memory. Started only with:  docker compose -f deploy/docker-compose.yml --profile data up -d
+
+  # Azure SQL Database → SQL Server
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    profiles: ["data"]
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Local-development-only-1"
+    ports:
+      - "1433:1433"
+
+  # Azure Blob and Table storage → Azurite emulator
+  storage:
+    image: mcr.microsoft.com/azure-storage/azurite
+    profiles: ["data"]
+    ports:
+      - "10000:10000"   # blobs
+      - "10002:10002"   # tables
+
+# Azure Service Bus: use the Service Bus emulator or a shared development namespace (ADR-0003).

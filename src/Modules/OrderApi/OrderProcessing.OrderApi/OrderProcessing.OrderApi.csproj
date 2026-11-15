@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- The package's global usings bring a Result and an Error that clash with the building blocks. -->
+    <HotChocolateImplicitUsings>disable</HotChocolateImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="HotChocolate.AspNetCore" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderProcessing.BuildingBlocks.Infrastructure\OrderProcessing.BuildingBlocks.Infrastructure.csproj" />
+    <!-- The Order API knows the core and integration services only through their contracts (ADR-0013). -->
+    <ProjectReference Include="..\..\Ordering\OrderProcessing.Ordering.Contracts\OrderProcessing.Ordering.Contracts.csproj" />
+    <ProjectReference Include="..\..\Ecommerce\OrderProcessing.Ecommerce.Contracts\OrderProcessing.Ecommerce.Contracts.csproj" />
+    <ProjectReference Include="..\..\Carriers\OrderProcessing.Carriers.Contracts\OrderProcessing.Carriers.Contracts.csproj" />
+    <ProjectReference Include="..\..\Notifications\OrderProcessing.Notifications.Contracts\OrderProcessing.Notifications.Contracts.csproj" />
+    <InternalsVisibleTo Include="OrderProcessing.Modules.UnitTests" />
+  </ItemGroup>
+</Project>

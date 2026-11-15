@@ -1,0 +1,148 @@
+name: Release Ordering
+
+# The release pipeline of one service (ADR-0011). It is the template the other services copy: only the
+# service's paths, project and app names change.
+#
+# Build once: one zip package per commit, deployed unchanged to every app of the service and to every
+# environment. Test is released on every merge to main. Production is started by hand with the run id of
+# a test release, after approval, and deploys that run's package: nothing is rebuilt.
+#
+# Terraform has created the apps. This pipeline only deploys code: to the staging slot, warm up, swap.
+#
+# The Azure steps need the repository variables AZURE_CLIENT_ID, AZURE_TENANT_ID and
+# AZURE_SUBSCRIPTION_ID (OIDC federation). Without them only the package is built.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/Modules/Ordering/**"
+      - "src/Modules/*/OrderProcessing.*.Contracts/**" # A contract the service consumes changed.
+      - "src/BuildingBlocks/**"
+      - "Directory.Packages.props"
+      - ".github/workflows/release-ordering.yml"
+  workflow_dispatch:
+    inputs:
+      release-run-id:
+        description: Run id of the test release whose package goes to production
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  actions: read # To download the package of an earlier run.
+
+concurrency:
+  group: release-ordering-${{ github.event_name }}
+  cancel-in-progress: false
+
+env:
+  PROJECT: src/Modules/Ordering/OrderProcessing.Ordering.Functions/OrderProcessing.Ordering.Functions.csproj
+  PACKAGE: ordering-${{ github.sha }}
+  # The apps of the service (ADR-0010), as in deploy/terraform/environments/*/main.tf.
+  APPS: intake flow
+
+jobs:
+  package:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # The same gate as CI: nothing is packaged that has not passed the tests.
+      - run: dotnet build --configuration Release
+      - run: dotnet test --no-build --configuration Release
+
+      - name: Publish
+        run: |
+          dotnet publish "$PROJECT" --configuration Release --output publish
+          (cd publish && zip -qr "../$PACKAGE.zip" .)
+
+      # Kept with the run for the promotion to production. The artefact repository (ADR-0011) is the
+      # long-term home; this upload is where its publish step goes.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ordering-package
+          path: ${{ env.PACKAGE }}.zip
+          retention-days: 90
+
+  release-test:
+    needs: package
+    if: vars.AZURE_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ordering-package
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Test runs on a Basic plan, which has no slots: deploy in place.
+      - name: Deploy to every app of the service
+        run: |
+          for app in $APPS; do
+            az functionapp deployment source config-zip \
+              --resource-group rg-orders-test-ordering \
+              --name "func-orders-test-ordering-$app" \
+              --src ordering-*.zip
+          done
+
+  release-production:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production # Required reviewers approve here.
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ordering-package
+          run-id: ${{ inputs.release-run-id }}
+          github-token: ${{ github.token }}
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Database migrations run here, before any code that needs them, with the deployment identity and
+      # always backward compatible with the running version (ADR-0004, ADR-0011). The step is added with
+      # the Azure SQL repository; until then the order store is in memory.
+
+      # The staging slot has every function switched off (slot settings), so the new version starts and
+      # warms up without taking a message from the running one.
+      - name: Deploy to the staging slots
+        run: |
+          for app in $APPS; do
+            az functionapp deployment source config-zip \
+              --resource-group rg-orders-production-ordering \
+              --name "func-orders-production-ordering-$app" \
+              --slot staging \
+              --src ordering-*.zip
+          done
+
+      - name: Check that the slots started
+        run: |
+          for app in $APPS; do
+            state=$(az functionapp show --resource-group rg-orders-production-ordering \
+              --name "func-orders-production-ordering-$app" --slot staging --query state -o tsv)
+            echo "$app staging: $state"
+            test "$state" = "Running"
+          done
+
+      # The apps of one service are released together (ADR-0010). Rolling back is the same swap again.
+      - name: Swap
+        run: |
+          for app in $APPS; do
+            az functionapp deployment slot swap \
+              --resource-group rg-orders-production-ordering \
+              --name "func-orders-production-ordering-$app" \
+              --slot staging --target-slot production
+          done

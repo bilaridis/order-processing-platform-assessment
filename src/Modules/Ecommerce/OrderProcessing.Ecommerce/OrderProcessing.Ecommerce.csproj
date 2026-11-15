@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderProcessing.BuildingBlocks.Infrastructure\OrderProcessing.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Ecommerce\OrderProcessing.Ecommerce.Contracts\OrderProcessing.Ecommerce.Contracts.csproj" />
+    <InternalsVisibleTo Include="OrderProcessing.Modules.UnitTests" />
+  </ItemGroup>
+</Project>

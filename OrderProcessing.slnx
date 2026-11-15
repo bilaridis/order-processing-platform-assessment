@@ -1,0 +1,51 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/OrderProcessing.BuildingBlocks.Application/OrderProcessing.BuildingBlocks.Application.csproj" />
+    <Project Path="src/BuildingBlocks/OrderProcessing.BuildingBlocks.Azure/OrderProcessing.BuildingBlocks.Azure.csproj" />
+    <Project Path="src/BuildingBlocks/OrderProcessing.BuildingBlocks.Domain/OrderProcessing.BuildingBlocks.Domain.csproj" />
+    <Project Path="src/BuildingBlocks/OrderProcessing.BuildingBlocks.Infrastructure/OrderProcessing.BuildingBlocks.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Host/">
+    <Project Path="src/Host/OrderProcessing.Host/OrderProcessing.Host.csproj" />
+    <Project Path="src/Host/OrderProcessing.Operations.Functions/OrderProcessing.Operations.Functions.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Inventory/">
+    <Project Path="src/Modules/Inventory/OrderProcessing.Inventory.Contracts/OrderProcessing.Inventory.Contracts.csproj" />
+    <Project Path="src/Modules/Inventory/OrderProcessing.Inventory/OrderProcessing.Inventory.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Notifications/">
+    <Project Path="src/Modules/Notifications/OrderProcessing.Notifications.Contracts/OrderProcessing.Notifications.Contracts.csproj" />
+    <Project Path="src/Modules/Notifications/OrderProcessing.Notifications.Functions/OrderProcessing.Notifications.Functions.csproj" />
+    <Project Path="src/Modules/Notifications/OrderProcessing.Notifications/OrderProcessing.Notifications.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/OrderApi/">
+    <Project Path="src/Modules/OrderApi/OrderProcessing.OrderApi/OrderProcessing.OrderApi.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Ordering/">
+    <Project Path="src/Modules/Ordering/OrderProcessing.Ordering.Module/OrderProcessing.Ordering.Module.csproj" />
+    <Project Path="src/Modules/Ordering/OrderProcessing.Ordering.Application/OrderProcessing.Ordering.Application.csproj" />
+    <Project Path="src/Modules/Ordering/OrderProcessing.Ordering.Contracts/OrderProcessing.Ordering.Contracts.csproj" />
+    <Project Path="src/Modules/Ordering/OrderProcessing.Ordering.Domain/OrderProcessing.Ordering.Domain.csproj" />
+    <Project Path="src/Modules/Ordering/OrderProcessing.Ordering.Functions/OrderProcessing.Ordering.Functions.csproj" />
+    <Project Path="src/Modules/Ordering/OrderProcessing.Ordering.Infrastructure/OrderProcessing.Ordering.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Ecommerce/">
+    <Project Path="src/Modules/Ecommerce/OrderProcessing.Ecommerce.Contracts/OrderProcessing.Ecommerce.Contracts.csproj" />
+    <Project Path="src/Modules/Ecommerce/OrderProcessing.Ecommerce.Functions/OrderProcessing.Ecommerce.Functions.csproj" />
+    <Project Path="src/Modules/Ecommerce/OrderProcessing.Ecommerce/OrderProcessing.Ecommerce.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Pricing/">
+    <Project Path="src/Modules/Pricing/OrderProcessing.Pricing.Contracts/OrderProcessing.Pricing.Contracts.csproj" />
+    <Project Path="src/Modules/Pricing/OrderProcessing.Pricing/OrderProcessing.Pricing.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Carriers/">
+    <Project Path="src/Modules/Carriers/OrderProcessing.Carriers.Contracts/OrderProcessing.Carriers.Contracts.csproj" />
+    <Project Path="src/Modules/Carriers/OrderProcessing.Carriers/OrderProcessing.Carriers.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OrderProcessing.ArchitectureTests/OrderProcessing.ArchitectureTests.csproj" />
+    <Project Path="tests/OrderProcessing.Modules.UnitTests/OrderProcessing.Modules.UnitTests.csproj" />
+  </Folder>
+</Solution>

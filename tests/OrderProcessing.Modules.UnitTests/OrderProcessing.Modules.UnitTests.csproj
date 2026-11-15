@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Modules\Ordering\OrderProcessing.Ordering.Application\OrderProcessing.Ordering.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Pricing\OrderProcessing.Pricing\OrderProcessing.Pricing.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Inventory\OrderProcessing.Inventory\OrderProcessing.Inventory.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Ecommerce\OrderProcessing.Ecommerce\OrderProcessing.Ecommerce.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Carriers\OrderProcessing.Carriers\OrderProcessing.Carriers.csproj" />
+    <ProjectReference Include="..\..\src\Modules\OrderApi\OrderProcessing.OrderApi\OrderProcessing.OrderApi.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Notifications\OrderProcessing.Notifications\OrderProcessing.Notifications.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\OrderProcessing.BuildingBlocks.Azure\OrderProcessing.BuildingBlocks.Azure.csproj" />
+  </ItemGroup>
+</Project>

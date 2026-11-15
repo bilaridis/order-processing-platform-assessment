@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Shared kernel. No package or project references allowed here. -->
+</Project>

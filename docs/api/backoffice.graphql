@@ -1,0 +1,112 @@
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+type Address {
+  recipient: String!
+  line1: String!
+  line2: String
+  city: String!
+  postalCode: String!
+  country: String!
+}
+
+type CancelOrderPayload {
+  orderId: UUID!
+  accepted: Boolean!
+}
+
+type Mutation {
+  "Ask to cancel any order on behalf of the customer. Ordering still decides whether it can be cancelled."
+  cancelOrder(orderId: UUID! reason: String): CancelOrderPayload! @cost(weight: "10")
+}
+
+type Order {
+  orderId: UUID!
+  customerId: String!
+  status: String!
+  version: Long!
+  updatedAt: DateTime!
+  submittedAt: DateTime!
+  items: [OrderItem!]!
+  destination: Address!
+  summary: OrderSummary
+  payment: String!
+  carrier: String
+  trackingNumber: String
+  carrierStatus: String
+  tracking: [TrackingEntry!]!
+}
+
+type OrderItem {
+  sku: String!
+  quantity: Int!
+}
+
+type OrderListItem {
+  orderId: UUID!
+  status: String!
+  carrierStatus: String
+  submittedAt: DateTime!
+  total: Decimal
+  currency: String
+  items: Int!
+}
+
+type OrderSummary {
+  lines: [OrderSummaryLine!]!
+  subtotal: Decimal!
+  charges: [OrderSummaryCharge!]!
+  total: Decimal!
+  currency: String!
+  destination: Address!
+  placedAt: DateTime!
+}
+
+type OrderSummaryCharge {
+  code: String!
+  kind: String!
+  description: String!
+  amount: Decimal!
+}
+
+type OrderSummaryLine {
+  sku: String!
+  name: String!
+  quantity: Int!
+  unitPrice: Decimal!
+  lineTotal: Decimal!
+}
+
+type Query {
+  "Any order by id."
+  order(id: UUID!): Order @cost(weight: "10")
+  "The orders of one customer, newest first."
+  ordersOfCustomer(customerId: String! take: Int! = 20): [OrderListItem!]! @cost(weight: "10")
+}
+
+type TrackingEntry {
+  id: UUID!
+  occurredAt: DateTime!
+  source: String!
+  code: String!
+  detail: String
+}
+
+"The purpose of the `cost` directive is to define a `weight` for GraphQL types, fields, and arguments. Static analysis can use these weights when calculating the overall cost of a query or response."
+directive @cost("The `weight` argument defines what value to add to the overall cost for every appearance, or possible appearance, of a type, field, argument, etc." weight: String!) on SCALAR | OBJECT | FIELD_DEFINITION | ARGUMENT_DEFINITION | ENUM | INPUT_FIELD_DEFINITION
+
+"The `@specifiedBy` directive is used within the type system definition language to provide a URL for specifying the behavior of custom scalar definitions."
+directive @specifiedBy("The specifiedBy URL points to a human-readable specification. This field will only read a result for scalar types." url: String!) on SCALAR
+
+"The `DateTime` scalar represents an ISO-8601 compliant date time type."
+scalar DateTime @specifiedBy(url: "https:\/\/www.graphql-scalars.com\/date-time")
+
+"The `Decimal` scalar type represents a decimal floating-point number."
+scalar Decimal
+
+"The `Long` scalar type represents non-fractional signed whole 64-bit numeric values. Long can represent values between -(2^63) and 2^63 - 1."
+scalar Long
+
+scalar UUID @specifiedBy(url: "https:\/\/tools.ietf.org\/html\/rfc4122")

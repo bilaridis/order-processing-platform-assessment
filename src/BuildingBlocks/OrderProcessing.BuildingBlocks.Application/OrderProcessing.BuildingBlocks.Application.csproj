@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Application-level abstractions. Must stay free of ASP.NET Core and infrastructure packages. -->
+  <ItemGroup>
+    <ProjectReference Include="..\OrderProcessing.BuildingBlocks.Domain\OrderProcessing.BuildingBlocks.Domain.csproj" />
+  </ItemGroup>
+</Project>
